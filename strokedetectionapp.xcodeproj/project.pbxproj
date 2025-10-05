@@ -29,9 +29,22 @@
 		63EA40862E91DFB8004B3447 /* strokedetectionappUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = strokedetectionappUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		63EA40B82E91E97F004B3447 /* Exceptions for "strokedetectionapp" folder in "strokedetectionapp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 63EA406B2E91DFB1004B3447 /* strokedetectionapp */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		63EA406E2E91DFB1004B3447 /* strokedetectionapp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				63EA40B82E91E97F004B3447 /* Exceptions for "strokedetectionapp" folder in "strokedetectionapp" target */,
+			);
 			path = strokedetectionapp;
 			sourceTree = "<group>";
 		};
@@ -396,8 +409,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"strokedetectionapp/Preview Content\"";
+				DEVELOPMENT_TEAM = 7ZP7VH8MK7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = strokedetectionapp/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to detect arm drift for stroke detection testing.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app may use the microphone for audio feedback during stroke detection testing.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -424,8 +441,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"strokedetectionapp/Preview Content\"";
+				DEVELOPMENT_TEAM = 7ZP7VH8MK7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = strokedetectionapp/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to detect arm drift for stroke detection testing.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app may use the microphone for audio feedback during stroke detection testing.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

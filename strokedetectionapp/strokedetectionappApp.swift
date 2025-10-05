@@ -1,4 +1,4 @@
-//
+//````````
 //  strokedetectionappApp.swift
 //  strokedetectionapp
 //
@@ -11,7 +11,7 @@ import SwiftUI
 struct strokedetectionappApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            TestView()
         }
     }
 }
