@@ -170,7 +170,7 @@ def calculate_nihss_score(drift_analysis: Dict, arm_angles: Dict, eye_closed: bo
     
     # Apply NIHSS scoring criteria
     final_asymmetry = drift_analysis['final_asymmetry']
-    max_drift = drift_analysis['max_drift']
+    max_drift = drift_analysis['max_drift'] 
     time_to_drift = drift_analysis['time_to_drift']
     hits_support = drift_analysis['hits_support']
     
