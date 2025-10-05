@@ -10,6 +10,8 @@ import Foundation
 import AVFoundation
 import Vision
 import CoreGraphics
+import CoreImage
+import UIKit
 
 /// Manages the camera session, captures frames, and runs the Vision pose estimation.
 class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
@@ -19,6 +21,9 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     
     // Delegate for pose estimation results
     var poseEstimationHandler: (([CGPoint]) -> Void)?
+    
+    // Store latest keypoints for AWS transmission
+    @Published var latestKeypoints: [String: CGPoint] = [:]
     
     override init() {
         super.init()
@@ -105,6 +110,9 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         
+        // Store the latest pixel buffer for capture
+        self.latestPixelBuffer = pixelBuffer
+        
         // 1. Create a request to recognize the human body pose
         let request = VNDetectHumanBodyPoseRequest { [weak self] request, error in
             if let error = error {
@@ -113,45 +121,107 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
             }
             
             // 2. Process results
-            guard let observations = request.results as? [VNRecognizedPointsObservation] else { return }
+            guard let observations = request.results as? [VNHumanBodyPoseObservation] else { return }
             
             var armKeypoints: [CGPoint] = []
             
-            // Simple logic to extract keypoints for the two arms
+            // Extract specific keypoints needed for stroke detection
             for observation in observations {
-                guard let recognizedPoints = try? observation.recognizedPoints(forGroupKey: .all) else { continue }
+                // Extract specific keypoints with confidence filtering
+                var specificKeypoints: [String: CGPoint] = [:]
                 
-                // Extract keypoints with higher confidence and better filtering
-                let availablePoints = recognizedPoints.compactMap { (key, point) -> CGPoint? in
-                    // Only include points with high confidence
-                    guard point.confidence > 0.7 else { return nil }
-                    return point.location
+                // Left arm keypoints
+                do {
+                    let leftWrist = try observation.recognizedPoint(.leftWrist)
+                    print("🔍 Left wrist confidence: \(leftWrist.confidence)")
+                    if leftWrist.confidence > 0.3 { // Lowered threshold for better detection
+                        specificKeypoints["left_wrist"] = leftWrist.location
+                        print("✅ Left wrist detected")
+                    }
+                } catch {
+                    print("❌ Left wrist detection failed")
                 }
                 
-                // Ensure we have enough points for validation
-                guard availablePoints.count >= 2 else { continue }
+                do {
+                    let leftShoulder = try observation.recognizedPoint(.leftShoulder)
+                    print("🔍 Left shoulder confidence: \(leftShoulder.confidence)")
+                    if leftShoulder.confidence > 0.3 { // Lowered threshold
+                        specificKeypoints["left_shoulder"] = leftShoulder.location
+                        print("✅ Left shoulder detected")
+                    }
+                } catch {
+                    print("❌ Left shoulder detection failed")
+                }
                 
-                // Additional validation: Check if points are in reasonable positions
-                let validPoints = availablePoints.filter { point in
-                    // Points should be within screen bounds (normalized coordinates 0-1)
+                // Right arm keypoints
+                do {
+                    let rightWrist = try observation.recognizedPoint(.rightWrist)
+                    print("🔍 Right wrist confidence: \(rightWrist.confidence)")
+                    if rightWrist.confidence > 0.3 { // Lowered threshold
+                        specificKeypoints["right_wrist"] = rightWrist.location
+                        print("✅ Right wrist detected")
+                    }
+                } catch {
+                    print("❌ Right wrist detection failed")
+                }
+                
+                do {
+                    let rightShoulder = try observation.recognizedPoint(.rightShoulder)
+                    print("🔍 Right shoulder confidence: \(rightShoulder.confidence)")
+                    if rightShoulder.confidence > 0.3 { // Lowered threshold
+                        specificKeypoints["right_shoulder"] = rightShoulder.location
+                        print("✅ Right shoulder detected")
+                    }
+                } catch {
+                    print("❌ Right shoulder detection failed")
+                }
+                
+                // Additional keypoints for better calibration
+                do {
+                    let leftElbow = try observation.recognizedPoint(.leftElbow)
+                    print("🔍 Left elbow confidence: \(leftElbow.confidence)")
+                    if leftElbow.confidence > 0.3 { // Lowered threshold
+                        specificKeypoints["left_elbow"] = leftElbow.location
+                        print("✅ Left elbow detected")
+                    }
+                } catch {
+                    print("❌ Left elbow detection failed")
+                }
+                
+                do {
+                    let rightElbow = try observation.recognizedPoint(.rightElbow)
+                    print("🔍 Right elbow confidence: \(rightElbow.confidence)")
+                    if rightElbow.confidence > 0.3 { // Lowered threshold
+                        specificKeypoints["right_elbow"] = rightElbow.location
+                        print("✅ Right elbow detected")
+                    }
+                } catch {
+                    print("❌ Right elbow detection failed")
+                }
+                
+                // Validate keypoints are within bounds
+                let validKeypoints = specificKeypoints.filter { (key, point) in
                     return point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1
                 }
                 
-                guard validPoints.count >= 2 else { continue }
+                // Convert to array of CGPoints for backward compatibility
+                let keypointArray = Array(validKeypoints.values)
                 
-                // Pass back the validated points to the ViewModel
-                armKeypoints.append(contentsOf: validPoints)
-                
-                // CRITICAL: We pass the average Y-coordinate of the whole arm to the ViewModel
+                // Store the specific keypoints for AWS transmission
                 DispatchQueue.main.async {
-                    self?.poseEstimationHandler?(armKeypoints)
+                    // Pass both the array (for backward compatibility) and the specific keypoints
+                    self?.poseEstimationHandler?(keypointArray)
                     
-                    // Here is where the ViewModel will take the average Y-coordinate and send it to AWS!
-                    // This is handled by the ViewModel, which holds a reference to this class.
+                    // Store specific keypoints for AWS payload
+                    self?.latestKeypoints = validKeypoints
+                    
+                    // Debug information
+                    print("📊 Total keypoints detected: \(keypointArray.count)")
+                    print("📊 Specific keypoints: \(validKeypoints.keys.joined(separator: ", "))")
+                    print("📊 Confidence levels: \(validKeypoints.count) keypoints above 0.3 threshold")
                 }
                 
-                // For a hackathon, we only process the first arm found for simplicity.
-                break 
+                break // Process first valid observation only
             }
         }
         
@@ -171,27 +241,37 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     
     // Captures the current frame as image data for AWS transmission
     func captureCurrentFrame(completion: @escaping (Data?) -> Void) {
-        // Create a photo output for capturing still images
-        let photoOutput = AVCapturePhotoOutput()
-        
-        // Add photo output to session if possible
-        if captureSession.canAddOutput(photoOutput) {
-            captureSession.addOutput(photoOutput)
+        // Store the latest pixel buffer for capture
+        // This will be set by the video output delegate
+        guard let latestPixelBuffer = self.latestPixelBuffer else {
+            print("❌ No pixel buffer available for capture")
+            completion(nil)
+            return
         }
         
-        // Configure photo settings (iOS 16+ compatible)
-        let settings = AVCapturePhotoSettings()
-        if #available(iOS 16.0, *) {
-            // Use maxPhotoDimensions for iOS 16+
-            settings.maxPhotoDimensions = CMVideoDimensions(width: 1920, height: 1080)
-        } else {
-            // Use deprecated property for older iOS versions
-            settings.isHighResolutionPhotoEnabled = false
+        // Convert pixel buffer to JPEG data
+        let ciImage = CIImage(cvPixelBuffer: latestPixelBuffer)
+        let context = CIContext()
+        
+        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+            print("❌ Failed to create CGImage from pixel buffer")
+            completion(nil)
+            return
         }
         
-        // Capture the photo
-        photoOutput.capturePhoto(with: settings, delegate: PhotoCaptureDelegate(completion: completion))
+        let uiImage = UIImage(cgImage: cgImage)
+        guard let imageData = uiImage.jpegData(compressionQuality: 0.8) else {
+            print("❌ Failed to convert UIImage to JPEG data")
+            completion(nil)
+            return
+        }
+        
+        print("✅ Captured real image from camera: \(imageData.count) bytes")
+        completion(imageData)
     }
+    
+    // Store the latest pixel buffer for capture
+    private var latestPixelBuffer: CVPixelBuffer?
 }
 
 // Helper class to handle photo capture completion
