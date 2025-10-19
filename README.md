@@ -233,10 +233,6 @@ The app requires camera access. Add to `Info.plist`:
 4. Test thoroughly
 5. Submit a pull request
 
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## 🙏 Acknowledgments
 
 - **NIHSS**: National Institutes of Health Stroke Scale
